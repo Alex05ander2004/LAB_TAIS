@@ -1,433 +1,210 @@
-# Organización de tareas: Seguimiento de hábitos diarios
+---
 
-**Branch**: `001-habit-tracker`
-**Fecha**: 2026-10-29
-**Plan**: [plan.md](plan.md)
-**Spec**: [spec.md](spec.md)
-**Estado**: Planificación — ninguna tarea ha sido ejecutada ni marcada como completada
+description: "Lista de tareas para implementar el seguimiento de hábitos diarios"
+---
+
+# Tasks: Seguimiento de hábitos diarios
+
+**Input**: Design documents from `/specs/001-habit-tracker/`
+
+**Prerequisites**: [plan.md](plan.md), [spec.md](spec.md), [research.md](research.md), [data-model.md](data-model.md), [contracts/](contracts/), [quickstart.md](quickstart.md)
+
+**Tests**: Incluidas. La constitución (principio V) exige pruebas automatizadas para cada funcionalidad y el plan define pruebas unitarias y de componentes (Vitest + React Testing Library) y de extremo a extremo (Playwright).
+
+**Organization**: Tareas agrupadas por historia de usuario del spec para poder implementarlas y probarlas por separado.
+
+## Format: `[ID] [P?] [Story] Description`
+
+- **[P]**: Se puede ejecutar en paralelo (archivos distintos, sin dependencias pendientes)
+- **[Story]**: Historia del spec: US1 = Registrar un hábito con validación clara (P1), US2 = Marcar cumplimiento y ver rachas (P2), US3 = Persistencia local y recuperación tras recarga (P3)
+
+## Path Conventions
+
+Proyecto único en la raíz del repositorio: `src/`, `tests/` (ver *Project Structure* en [plan.md](plan.md)).
 
 ---
 
-## Convenciones
+## Phase 1: Setup (Shared Infrastructure)
 
-- **HU**: Historia de usuario (HU1 = Registrar hábito, HU2 = Validar datos, HU3 = Marcar cumplimiento y rachas, HU4 = Persistencia y recuperación)
-- **FR**: Requisito funcional del `spec.md`
-- **Tipo**: `impl` = implementación, `prueba` = prueba funcional/técnica, `doc` = documentación, `integ` = integración
-- **Estado**: Todas las tareas están en estado **pendiente**
+**Purpose**: Inicializar el proyecto React + Vite y sus herramientas
 
----
-
-## Bloque 0 — Preparación técnica
-
-### T001 — Definir la estructura de carpetas y archivos del proyecto
-
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | Transversal |
-| **Requisitos vinculados** | FR-010 (alcance limitado), constitución principio IV (modularidad) |
-| **Dependencias** | Ninguna |
-| **Tipo** | impl |
-| **Criterio de finalización** | Existe la estructura de carpetas propuesta en `plan.md` (sección 4 y 5): `index.html`, `css/main.css`, `js/validation.js`, `js/habits.js`, `js/streaks.js`, `js/storage.js`, `js/ui.js` |
-
-**Descripción**: Crear la estructura de directorios y los archivos vacíos (esqueleto) del proyecto siguiendo la arquitectura de tres capas propuesta en el `plan.md`. Definir también la configuración base del framework de pruebas (Vitest o Jest).
+- [ ] T001 Crear package.json con `"type": "module"`, scripts `dev`, `build`, `preview`, `lint`, `test` (`vitest run`), `test:watch` y `test:e2e` (`playwright test`), `engines.node` `>=20.19`, y dependencias react, react-dom, vite, @vitejs/plugin-react, vitest, jsdom, @testing-library/react, @testing-library/user-event, @testing-library/jest-dom, @playwright/test, eslint, @eslint/js, eslint-plugin-react-hooks, eslint-plugin-react-refresh y globals en package.json
+- [ ] T002 [P] Crear .gitignore en la raíz con node_modules/, dist/, coverage/, test-results/, playwright-report/, playwright/.cache/, *.log, .env* y .DS_Store en .gitignore
+- [ ] T003 [P] Configurar Vite con el plugin de React y Vitest (`environment: 'jsdom'`, `setupFiles: ['./tests/setup.js']`, incluir `tests/unit` y `tests/components`, excluir `tests/e2e`) en vite.config.js
+- [ ] T004 [P] Configurar Playwright con `testDir: 'tests/e2e'`, proyecto Chromium, `baseURL` `http://localhost:5173` y `webServer` que ejecute `npm run dev -- --port 5173 --strictPort` en playwright.config.js
+- [ ] T005 [P] Configurar ESLint (flat config con @eslint/js, react-hooks, react-refresh y globals de navegador; ignorar dist/ y playwright-report/) en eslint.config.js
+- [ ] T006 Crear index.html con `lang="es"`, `<meta name="viewport">`, título «Seguimiento de hábitos» y `<div id="root">`, y src/main.jsx que monta `<App />` en modo estricto e importa src/styles.css
 
 ---
 
-### T002 — Definir el modelo de datos y la clave de localStorage
+## Phase 2: Foundational (Blocking Prerequisites)
 
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU1, HU4 |
-| **Requisitos vinculados** | FR-001, FR-008 |
-| **Dependencias** | T001 |
-| **Tipo** | impl |
-| **Criterio de finalización** | Existe un tipo o estructura documentada para `Habit` con los campos `id`, `name`, `category`, `startDate` y `completionHistory`. La clave de localStorage está definida como constante en `storage.js`. |
+**Purpose**: Fechas locales, «hoy» y estructura base de la pantalla, que usan las tres historias
 
-**Descripción**: Implementar la definición del modelo `Habit` (como clase, objeto tipado o esquema) y las constantes de configuración de almacenamiento. Establecer el formato de `completionHistory` (arreglo de fechas ISO 8601).
+**⚠️ CRITICAL**: Ninguna historia puede empezar hasta terminar esta fase
 
----
+- [ ] T007 [P] Crear la configuración de pruebas (matchers de jest-dom, `cleanup` y `localStorage.clear()` después de cada prueba) en tests/setup.js
+- [ ] T008 [P] Escribir pruebas unitarias de fechas: `todayKey` usa la fecha local y no UTC (p. ej. 2026-10-29 23:30 local sigue siendo `2026-10-29`), `isValidDateKey` acepta `2026-10-29` y rechaza `2026-02-30`, `29/10/2026`, `''` y valores que no son texto, `addDays` cruza fin de mes y de año, `compareDateKeys` ordena cronológicamente, en tests/unit/dates.test.js
+- [ ] T009 Implementar `todayKey`, `isValidDateKey`, `addDays`, `compareDateKeys` y `formatDateKey` (español) según contracts/domain-api.md en src/domain/dates.js
+- [ ] T010 Implementar el hook `useToday` que devuelve la date key local y la recalcula cada 30 s y en los eventos `focus` y `visibilitychange` (research.md R8) en src/hooks/useToday.js
+- [ ] T011 Crear el esqueleto de la pantalla (encabezado h1 «Seguimiento de hábitos», secciones «Nuevo hábito» y «Mis hábitos») en src/App.jsx y los estilos base *mobile first* (variables de color con contraste AA, tipografía del sistema, foco visible, dos columnas desde 720 px) en src/styles.css
 
-## Bloque 1 — HU1: Registro de hábitos
-
-### T003 — Implementar la función de creación de un hábito válido
-
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU1 |
-| **Requisitos vinculados** | FR-001, FR-002 |
-| **Dependencias** | T002 |
-| **Tipo** | impl |
-| **Criterio de finalización** | Existe una función en `habits.js` que recibe nombre, categoría y fecha de inicio y devuelve un objeto `Habit` válido con un `id` único generado. |
-
-**Descripción**: Implementar la función pura `createHabit(name, category, startDate)` en la capa de dominio. No debe incluir lógica de interfaz ni de almacenamiento.
+**Checkpoint**: Base lista; `npm run dev` muestra la pantalla vacía y `npm test` ejecuta las pruebas de fechas
 
 ---
 
-### T004 — Implementar la interfaz del formulario de registro
+## Phase 3: User Story 1 - Registrar un hábito con validación clara (Priority: P1) 🎯 MVP
 
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU1 |
-| **Requisitos vinculados** | FR-001, FR-002 |
-| **Dependencias** | T003 |
-| **Tipo** | impl |
-| **Criterio de finalización** | El formulario en `index.html` / `ui.js` permite ingresar nombre, categoría y fecha de inicio. El botón de guardar es funcional y llama a la lógica de dominio. |
+**Goal**: Crear hábitos con nombre, categoría y fecha de inicio, con mensajes claros por campo y rechazo de duplicados
 
-**Descripción**: Construir el formulario HTML con sus tres campos y el botón de guardar. Conectar el evento de envío con la función `createHabit` y la actualización de la lista visible.
+**Independent Test**: Crear «Leer / Estudio / hoy» y verlo en la lista; intentar guardar con campos vacíos, con solo espacios y con « LEER » y comprobar que no se guarda y que cada mensaje indica el dato a corregir
 
----
+### Tests for User Story 1 ⚠️
 
-### T005 — Implementar la visualización de la lista de hábitos
+> Escribir estas pruebas primero y comprobar que fallan antes de implementar
 
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU1, HU3 |
-| **Requisitos vinculados** | FR-005 |
-| **Dependencias** | T003, T004 |
-| **Tipo** | impl |
-| **Criterio de finalización** | La lista muestra todos los hábitos guardados en un orden estable. Cada elemento distingue visualmente si el hábito ya fue cumplido hoy o no. |
+- [ ] T012 [P] [US1] Escribir pruebas unitarias de `normalizeName` y `validateHabitInput`: nombre vacío o «solo espacios» → «Escribe el nombre del hábito.»; categoría vacía o solo espacios → «Escribe una categoría.»; fecha vacía → «Elige la fecha de inicio.»; fecha inválida → «La fecha de inicio no es válida.»; « LEER » y «leer» frente a «Leer» → «Ya existe un hábito llamado «Leer». Usa otro nombre.»; varios errores a la vez; datos válidos → `valid: true`, en tests/unit/validation.test.js
+- [ ] T013 [P] [US1] Escribir pruebas unitarias de `createHabit` (devuelve `name` recortado y con espacios colapsados, `category` recortada, `completions: []`, usa `id` y `createdAt` recibidos, no modifica la lista existente, devuelve `errors` si la validación falla) y de `sortHabits` (alfabético en español sin distinguir mayúsculas ni acentos, empate por `createdAt`, no modifica el arreglo original) en tests/unit/habits.test.js
+- [ ] T014 [P] [US1] Escribir pruebas de componente del formulario: envío vacío muestra los tres mensajes, marca `aria-invalid` y muestra el resumen `role="alert"`; un envío válido llama a `onCreate`, muestra «Hábito «Leer» guardado.», limpia los campos y deja la fecha en hoy; un duplicado devuelto por `onCreate` se muestra bajo el nombre, en tests/components/HabitForm.test.jsx
 
-**Descripción**: Implementar en `ui.js` la función de renderizado de la lista de hábitos. Aplicar los estilos CSS necesarios para diferenciar hábitos cumplidos y no cumplidos hoy (FR-005). Mantener la lista ordenada de forma estable.
+### Implementation for User Story 1
 
----
+- [ ] T015 [P] [US1] Implementar `normalizeName` (`trim`, `replace(/\s+/g, ' ')`, `toLocaleLowerCase('es')`) y `validateHabitInput` con los mensajes exactos de data-model.md en src/domain/validation.js
+- [ ] T016 [US1] Implementar `createHabit(input, existing, { id, createdAt })` y `sortHabits(habits)` según contracts/domain-api.md en src/domain/habits.js (depende de T015)
+- [ ] T017 [US1] Implementar el hook `useHabits` con el estado en memoria y la acción `addHabit(input)` que genera `id` con `crypto.randomUUID()` (con respaldo) y `createdAt`, llama a `createHabit` y devuelve `{ ok, errors }` en src/hooks/useHabits.js
+- [ ] T018 [P] [US1] Implementar `HabitForm` con etiquetas «Nombre», «Categoría» y «Fecha de inicio», botón «Guardar hábito», errores por campo con `aria-describedby` y `aria-invalid`, resumen `role="alert"` y confirmación `role="status"` según contracts/ui-contract.md en src/components/HabitForm.jsx
+- [ ] T019 [US1] Implementar `HabitList` (lista accesible «Mis hábitos», estado vacío «Todavía no tienes hábitos. Crea el primero con el formulario.», hábitos ordenados con `sortHabits`) y la tarjeta básica `HabitItem` (nombre en h3, categoría y fecha de inicio) en src/components/HabitList.jsx y src/components/HabitItem.jsx
+- [ ] T020 [US1] Conectar `useToday`, `useHabits`, `HabitForm` y `HabitList` en src/App.jsx y añadir los estilos del formulario, mensajes de error y tarjetas en src/styles.css
 
-### T006 — Probar el flujo de registro de un hábito válido
-
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU1 |
-| **Requisitos vinculados** | FR-001, FR-002 |
-| **Dependencias** | T003, T004, T005 |
-| **Tipo** | prueba |
-| **Criterio de finalización** | Existe una prueba que crea un hábito con nombre, categoría y fecha de inicio válidos y verifica que aparece en la lista (escenario de aceptación 1 de la HU1 del spec). |
-
-**Descripción**: Escribir la prueba del escenario de aceptación principal: "Given una persona completa todos los campos válidos, When envía el formulario, Then el hábito aparece en la lista".
+**Checkpoint**: US1 funciona por sí sola: se crean hábitos y los errores son claros (en memoria)
 
 ---
 
-## Bloque 2 — HU2: Validación de datos
+## Phase 4: User Story 2 - Marcar cumplimiento y ver rachas (Priority: P2)
 
-### T007 — Implementar validaciones de campos obligatorios y texto vacío
+**Goal**: Marcar o desmarcar solo el día de hoy, ver qué hábitos están cumplidos hoy y su racha actual y mejor racha
 
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU2 |
-| **Requisitos vinculados** | FR-002, FR-003 |
-| **Dependencias** | T002 |
-| **Tipo** | impl |
-| **Criterio de finalización** | Existe una función en `validation.js` que detecta campos vacíos o con solo espacios en nombre, categoría y fecha de inicio, y devuelve los mensajes de error correspondientes. |
+**Independent Test**: Con un hábito creado, marcarlo hoy y ver «Hoy: Cumplido» y racha 1; desmarcarlo; comprobar que los días anteriores y mañana están deshabilitados; con historial de ayer y anteayer, hoy sin marcar muestra racha 2 y «Pendiente»
 
-**Descripción**: Implementar `validateHabitInput(name, category, startDate)` en `validation.js`. La función debe aplicar `trim()` y verificar longitud para detectar textos de solo espacios. Debe devolver un objeto o lista de errores por campo.
+### Tests for User Story 2 ⚠️
 
----
+- [ ] T021 [P] [US2] Escribir pruebas unitarias de `calculateStreaks` con los ejemplos de data-model.md (historial vacío, tres días seguidos hasta hoy, hoy pendiente con ayer cumplido, ayer sin cumplir, mejor racha con huecos), más fin de mes, hábito creado hoy y fechas futuras ignoradas, en tests/unit/streaks.test.js
+- [ ] T022 [P] [US2] Añadir pruebas unitarias de `toggleCompletion` (marca y desmarca hoy; rechaza ayer, mañana y hoy anterior a `startDate` con `ok: false` sin modificar el hábito original; mantiene `completions` ordenado y sin duplicados), `canEditDate`, `isCompletedOn` y `getDayStatus` (los cinco estados) en tests/unit/habits.test.js
+- [ ] T023 [P] [US2] Escribir pruebas de componente de la tarjeta: muestra «Hoy: Pendiente» o «Hoy: Cumplido» y `data-status`, el botón tiene `aria-pressed` y llama a `onToggle`, muestra «Racha actual» y «Mejor racha», la tira de días tiene 7 botones y solo hoy está habilitado, y un hábito con inicio futuro muestra «Empieza el …» con el botón deshabilitado, en tests/components/HabitItem.test.jsx
 
-### T008 — Implementar validación de nombres duplicados
+### Implementation for User Story 2
 
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU2 |
-| **Requisitos vinculados** | FR-004 |
-| **Dependencias** | T007 |
-| **Tipo** | impl |
-| **Criterio de finalización** | Existe una función en `validation.js` o `habits.js` que compara el nombre nuevo con los existentes usando `trim().replace(/\s+/g,' ').toLowerCase()` y devuelve un error si hay coincidencia. |
+- [ ] T024 [P] [US2] Implementar `calculateStreaks(completions, today)` que devuelve `{ current, best, todayStatus }` con la regla de research.md R3 (hoy sin marcar es `pending` y no rompe la racha) en src/domain/streaks.js
+- [ ] T025 [US2] Implementar `isCompletedOn`, `canEditDate`, `toggleCompletion(habit, dateKey, today)` y `getDayStatus` según contracts/domain-api.md en src/domain/habits.js
+- [ ] T026 [US2] Añadir la acción `toggleToday(habitId)` al hook, usando el `today` recibido de `useToday` y `toggleCompletion`, en src/hooks/useHabits.js
+- [ ] T027 [P] [US2] Implementar `DayStrip` con los 5 días anteriores, hoy y mañana como botones; solo hoy habilitado y el resto `disabled` con nombre accesible «{fecha}: {estado}, solo lectura», en src/components/DayStrip.jsx
+- [ ] T028 [US2] Completar `HabitItem` con el estado de hoy, botón «Marcar como cumplido» / «Desmarcar» con `aria-pressed`, rachas y `DayStrip`, y añadir el resumen «{c} de {n} cumplidos hoy» en `HabitList`, con sus estilos, en src/components/HabitItem.jsx, src/components/HabitList.jsx y src/styles.css
 
-**Descripción**: Implementar `isDuplicateName(name, existingHabits)`. La normalización debe aplicarse tanto al nombre nuevo como a cada nombre en la lista existente antes de comparar.
+**Checkpoint**: US1 y US2 funcionan juntas: se marca hoy y las rachas se actualizan
 
 ---
 
-### T009 — Conectar validaciones con el formulario y mostrar mensajes de error
+## Phase 5: User Story 3 - Persistencia local y recuperación tras recarga (Priority: P3)
 
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU2 |
-| **Requisitos vinculados** | FR-002, FR-003, FR-004 |
-| **Dependencias** | T007, T008, T004 |
-| **Tipo** | impl |
-| **Criterio de finalización** | Cuando el formulario se envía con datos inválidos o duplicados, la interfaz muestra un mensaje claro indicando el campo que debe corregirse y no guarda el hábito. |
+**Goal**: Conservar hábitos e historial al recargar y seguir funcionando si `localStorage` falta o está dañado
 
-**Descripción**: Integrar las funciones de `validation.js` con el manejador de envío del formulario en `ui.js`. Implementar la visualización de mensajes de error junto a cada campo. Los mensajes deben ser accesibles (asociados al campo mediante `aria-describedby` o equivalente).
+**Independent Test**: Crear y marcar hábitos, recargar y ver el mismo estado; poner texto inválido en la clave `habit-tracker`, recargar y ver el aviso, la lista vacía y poder crear un hábito
 
----
+### Tests for User Story 3 ⚠️
 
-### T010 — Probar validación de campos obligatorios y texto de solo espacios
+- [ ] T029 [P] [US3] Escribir pruebas unitarias del almacenamiento con un `localStorage` simulado: clave ausente → `empty`; guardar y leer devuelve lo mismo con `schemaVersion: 1`; JSON inválido, raíz no objeto, `habits` no arreglo y `schemaVersion` distinto de 1 → `corrupt` con `[]`; hábitos sin campos obligatorios se descartan → `partial` con `discarded`; fechas inválidas, duplicadas o anteriores al inicio en `completions` se ignoran; nombres repetidos conservan el primero; `getItem` que lanza → `unavailable`; `setItem` que lanza → `saveState` devuelve `false`, en tests/unit/habitStorage.test.js
+- [ ] T030 [P] [US3] Escribir pruebas de componente de la aplicación completa: restaura hábitos guardados al montar; guarda tras crear y tras marcar; con datos dañados muestra el aviso, la lista vacía y permite crear un hábito; el aviso se cierra con «Cerrar aviso»; la lista se muestra en orden alfabético; no existen controles para editar ni eliminar (FR-010), en tests/components/App.test.jsx
 
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU2 |
-| **Requisitos vinculados** | FR-002, FR-003 |
-| **Dependencias** | T007, T009 |
-| **Tipo** | prueba |
-| **Criterio de finalización** | Existen pruebas que verifican: (a) nombre vacío → error, (b) categoría vacía → error, (c) fecha vacía → error, (d) nombre con solo espacios → tratado como vacío. |
+### Implementation for User Story 3
 
-**Descripción**: Escribir pruebas unitarias para `validateHabitInput` cubriendo los casos de campos vacíos y texto compuesto exclusivamente por espacios en cada campo obligatorio.
+- [ ] T031 [US3] Implementar `STORAGE_KEY` (`"habit-tracker"`), `SCHEMA_VERSION` (`1`), `loadState(storage)` que nunca lanza y devuelve `{ habits, status, discarded }`, y `saveState(habits, storage)` que devuelve `true`/`false`, según contracts/storage-format.md, en src/storage/habitStorage.js
+- [ ] T032 [P] [US3] Implementar `StorageNotice` con `role="alert"`, los textos de contracts/ui-contract.md y el botón «Cerrar aviso» en src/components/StorageNotice.jsx
+- [ ] T033 [US3] Integrar la persistencia: `useHabits` carga con `loadState` al iniciar, guarda con `saveState` después de cada cambio (no en lecturas) y expone el aviso; mostrar `StorageNotice` bajo el título en src/hooks/useHabits.js y src/App.jsx
+
+**Checkpoint**: Las tres historias funcionan y los datos sobreviven a una recarga
 
 ---
 
-### T011 — Probar validación de nombres duplicados
+## Phase 6: Polish & Cross-Cutting Concerns
 
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU2 |
-| **Requisitos vinculados** | FR-004 |
-| **Dependencias** | T008, T009 |
-| **Tipo** | prueba |
-| **Criterio de finalización** | Existen pruebas que verifican: (a) nombre exactamente igual → rechazado, (b) mismo nombre con distinta capitalización → rechazado, (c) mismo nombre con espacios redundantes → rechazado (escenarios 2 y 3 de HU1 del spec). |
+**Purpose**: Verificación de extremo a extremo, diseño responsive y documentación de ejecución
 
-**Descripción**: Escribir pruebas unitarias para `isDuplicateName` cubriendo los tres casos del spec: capitalización distinta, espacios redundantes y nombre idéntico.
+- [ ] T034 Escribir pruebas de extremo a extremo con la fecha fijada mediante `page.clock`: validación de campos vacíos, creación, duplicado con mayúsculas y espacios, marcar y desmarcar hoy, días pasados y futuros deshabilitados, racha con historial precargado y hoy pendiente, persistencia tras recarga, aviso con datos dañados y vista 375 × 812 sin scroll horizontal, en tests/e2e/habit-tracker.spec.js
+- [ ] T035 [P] Revisar el diseño responsive y la accesibilidad básica a 320, 375, 768 y 1280 px (sin scroll horizontal, objetivos táctiles ≥ 44 px, foco visible, contraste AA) y ajustar src/styles.css
+- [ ] T036 [P] Crear README.md en la raíz con requisitos, comandos de ejecución y pruebas y la estructura del proyecto
+- [ ] T037 Ejecutar la validación de quickstart.md: `npm test`, `npm run test:e2e`, `npm run build` y `npm run lint` sin errores
 
 ---
 
-## Bloque 3 — HU3: Cumplimiento diario y rachas
+## Dependencies & Execution Order
 
-### T012 — Implementar el marcado y desmarcado del día actual
+### Phase Dependencies
 
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU3 |
-| **Requisitos vinculados** | FR-006 |
-| **Dependencias** | T003 |
-| **Tipo** | impl |
-| **Criterio de finalización** | Existe una función en `habits.js` que agrega o elimina la fecha del día actual en `completionHistory` de un hábito dado. La función no modifica fechas pasadas ni futuras. |
+- **Setup (Phase 1)**: Sin dependencias
+- **Foundational (Phase 2)**: Depende de Setup; bloquea todas las historias
+- **US1 (Phase 3)**: Depende de Foundational
+- **US2 (Phase 4)**: Depende de Foundational; usa `useHabits` y `HabitItem` de US1 (T017, T019)
+- **US3 (Phase 5)**: Depende de Foundational; persiste el estado de `useHabits` (T017, T026)
+- **Polish (Phase 6)**: Depende de las tres historias
 
-**Descripción**: Implementar `toggleCompletion(habit, date)` en `habits.js`. La función debe verificar que la fecha recibida es la del día actual antes de modificar el historial. Si la fecha es pasada o futura, debe devolver el hábito sin cambios o lanzar un error controlado.
+### User Story Dependencies
 
----
+- **US1 (P1)**: Independiente; es el MVP
+- **US2 (P2)**: Necesita un hábito creado (US1), pero su lógica (`streaks.js`, `toggleCompletion`) se prueba sola con datos fijos
+- **US3 (P3)**: Su módulo `habitStorage.js` se prueba solo; la integración (T033) necesita `useHabits` de US1 y US2
 
-### T013 — Implementar la restricción de edición de días pasados y futuros
+### Within Each User Story
 
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU3 |
-| **Requisitos vinculados** | FR-006 |
-| **Dependencias** | T012 |
-| **Tipo** | impl |
-| **Criterio de finalización** | La interfaz muestra los días pasados en modo solo lectura. El botón o control de marcado para días pasados y futuros está deshabilitado o no existe. |
+- Pruebas primero (deben fallar) → dominio → hook → componentes → integración en App
+- Dependencias clave: T009 → T010, T015 → T016 → T017; T024 y T025 → T026 → T028; T031 → T033; T029 y T030 necesitan T031 y T033 para pasar
 
-**Descripción**: Implementar en `ui.js` la lógica de renderizado que deshabilita la interacción para fechas distintas al día actual. Usar atributo `disabled` o eliminación del evento según el diseño adoptado.
+### Parallel Opportunities
 
----
-
-### T014 — Implementar el cálculo de racha actual y mejor racha
-
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU3 |
-| **Requisitos vinculados** | FR-007 |
-| **Dependencias** | T002 |
-| **Tipo** | impl |
-| **Criterio de finalización** | Existe una función en `streaks.js` que recibe `completionHistory` y la fecha actual, y devuelve `{ currentStreak, bestStreak }`. Si hoy no está marcado, la racha actual se calcula hasta el último día consecutivo completado antes de hoy. |
-
-**Descripción**: Implementar `calculateStreaks(completionHistory, today)` en `streaks.js`. La función debe ordenar las fechas, calcular secuencias consecutivas y aplicar la regla del spec: "hoy sin marcar no rompe la racha hasta el inicio del siguiente día" (aclaración de la sesión 2026-10-29 del spec).
+- Setup: T002, T003, T004 y T005 en paralelo tras T001
+- Foundational: T007 y T008 en paralelo
+- US1: T012, T013 y T014 en paralelo; T015 y T018 en paralelo
+- US2: T021, T022 y T023 en paralelo; T024 y T027 en paralelo
+- US3: T029 y T030 en paralelo; T032 en paralelo con T031
+- Polish: T035 y T036 en paralelo
 
 ---
 
-### T015 — Mostrar racha actual y mejor racha en la lista
+## Parallel Example: User Story 2
 
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU3 |
-| **Requisitos vinculados** | FR-007, FR-005 |
-| **Dependencias** | T014, T005 |
-| **Tipo** | impl |
-| **Criterio de finalización** | Cada elemento de la lista muestra la racha actual y la mejor racha del hábito correspondiente, actualizadas al marcar o desmarcar el día actual. |
+```bash
+# Pruebas de US2 a la vez:
+Task: "Pruebas unitarias de calculateStreaks en tests/unit/streaks.test.js"
+Task: "Pruebas de toggleCompletion y getDayStatus en tests/unit/habits.test.js"
+Task: "Pruebas de componente de HabitItem en tests/components/HabitItem.test.jsx"
 
-**Descripción**: Integrar `calculateStreaks` en el renderizado de cada ítem de la lista en `ui.js`. Las rachas deben actualizarse dinámicamente tras cada cambio de estado.
-
----
-
-### T016 — Probar marcado del día actual y restricción de días pasados/futuros
-
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU3 |
-| **Requisitos vinculados** | FR-006 |
-| **Dependencias** | T012, T013 |
-| **Tipo** | prueba |
-| **Criterio de finalización** | Existen pruebas que verifican: (a) marcar hoy agrega la fecha al historial, (b) desmarcar hoy la elimina, (c) intentar marcar un día pasado no modifica el historial (escenario 4 de HU2 del spec). |
-
-**Descripción**: Escribir pruebas unitarias para `toggleCompletion` cubriendo el marcado exitoso del día actual, el desmarcado y el bloqueo para fechas pasadas y futuras.
+# Implementación independiente de US2 a la vez:
+Task: "calculateStreaks en src/domain/streaks.js"
+Task: "DayStrip en src/components/DayStrip.jsx"
+```
 
 ---
 
-### T017 — Probar el cálculo de rachas
+## Implementation Strategy
 
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU3 |
-| **Requisitos vinculados** | FR-007 |
-| **Dependencias** | T014 |
-| **Tipo** | prueba |
-| **Criterio de finalización** | Existen pruebas que verifican: (a) racha correcta con varios días consecutivos, (b) racha correcta cuando hoy no está marcado (no se rompe), (c) mejor racha calculada correctamente sobre historial con interrupciones (escenarios 1, 2 y 3 de HU2 del spec). |
+### MVP First (User Story 1 Only)
 
-**Descripción**: Escribir pruebas unitarias para `calculateStreaks` con distintos estados del historial: racha continua, día de hoy sin marcar, mejor racha con interrupciones.
+1. Completar Phase 1 (Setup) y Phase 2 (Foundational)
+2. Completar Phase 3 (US1)
+3. **Validar**: crear hábitos válidos e inválidos con `npm run dev` y `npm test`
 
----
+### Incremental Delivery
 
-## Bloque 4 — HU4: Persistencia y recuperación
-
-### T018 — Implementar la escritura de datos en localStorage
-
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU4 |
-| **Requisitos vinculados** | FR-008 |
-| **Dependencias** | T002 |
-| **Tipo** | impl |
-| **Criterio de finalización** | Existe una función en `storage.js` que serializa la lista de hábitos con `JSON.stringify` y la escribe en la clave definida de localStorage. |
-
-**Descripción**: Implementar `saveHabits(habits)` en `storage.js`. La función se invoca después de cada operación que modifica el estado (crear hábito, marcar/desmarcar día).
+1. Setup + Foundational → base lista
+2. US1 → registro y validación (MVP)
+3. US2 → marcado de hoy y rachas
+4. US3 → persistencia y recuperación
+5. Polish → E2E, responsive, README y validación final
 
 ---
 
-### T019 — Implementar la lectura y recuperación defensiva desde localStorage
+## Notes
 
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU4 |
-| **Requisitos vinculados** | FR-008, FR-009 |
-| **Dependencias** | T018 |
-| **Tipo** | impl |
-| **Criterio de finalización** | Existe una función en `storage.js` que lee la clave de localStorage, intenta deserializar con `JSON.parse` dentro de un `try/catch`, y devuelve un arreglo vacío si los datos no existen, están corruptos o no tienen la estructura esperada. |
-
-**Descripción**: Implementar `loadHabits()` en `storage.js` siguiendo el flujo defensivo descrito en el `plan.md` (sección 7). La función no debe lanzar excepciones al código llamante.
-
----
-
-### T020 — Integrar la persistencia con el ciclo de vida de la aplicación
-
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU4 |
-| **Requisitos vinculados** | FR-008 |
-| **Dependencias** | T018, T019, T012, T003 |
-| **Tipo** | integ |
-| **Criterio de finalización** | Al crear un hábito o marcar el día, `saveHabits` se invoca automáticamente. Al cargar la página, `loadHabits` recupera el estado previo y la lista se renderiza con los datos guardados. |
-
-**Descripción**: Conectar `storage.js` con `ui.js` para que toda operación de escritura persista el estado y la inicialización de la aplicación cargue el estado guardado. Verificar que no se llama a `saveHabits` innecesariamente (por ejemplo, en lecturas puras).
-
----
-
-### T021 — Probar la persistencia del estado tras recarga
-
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU4 |
-| **Requisitos vinculados** | FR-008 |
-| **Dependencias** | T018, T019, T020 |
-| **Tipo** | prueba |
-| **Criterio de finalización** | Existe una prueba que simula guardar hábitos y marcas de cumplimiento, y verifica que `loadHabits` devuelve el mismo estado (escenario 1 de HU3 del spec). |
-
-**Descripción**: Escribir una prueba de integración para el ciclo guardar → recargar → leer, usando un mock de `localStorage`.
-
----
-
-### T022 — Probar la recuperación ante datos ausentes o corruptos
-
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU4 |
-| **Requisitos vinculados** | FR-009 |
-| **Dependencias** | T019 |
-| **Tipo** | prueba |
-| **Criterio de finalización** | Existen pruebas que verifican: (a) `loadHabits` con localStorage vacío devuelve `[]`, (b) `loadHabits` con JSON corrupto devuelve `[]` sin lanzar error (escenario 2 de HU3 y caso límite del spec). |
-
-**Descripción**: Escribir pruebas unitarias para `loadHabits` con localStorage vacío y con un valor corrupto (cadena que no es JSON válido).
-
----
-
-## Bloque 5 — Integración y pruebas generales
-
-### T023 — Integrar los módulos y verificar el flujo completo de la aplicación
-
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | HU1, HU2, HU3, HU4 |
-| **Requisitos vinculados** | FR-001 a FR-009 |
-| **Dependencias** | T006, T011, T017, T020, T022 |
-| **Tipo** | integ |
-| **Criterio de finalización** | La aplicación completa puede ejecutarse en un navegador: permite crear un hábito, validar errores, marcar el día, ver rachas y recargar conservando los datos, sin errores en consola. |
-
-**Descripción**: Integrar todos los módulos en `index.html` y `js/ui.js`. Verificar que no existen dependencias circulares ni errores de importación. Realizar una revisión manual del flujo end-to-end.
-
----
-
-### T024 — Verificar el diseño responsive y la accesibilidad básica
-
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | Transversal |
-| **Requisitos vinculados** | FR-005, FR-006, constitución principios IV y V |
-| **Dependencias** | T023 |
-| **Tipo** | prueba |
-| **Criterio de finalización** | La aplicación es usable en pantallas desde 320 px de ancho. Los campos del formulario tienen etiquetas asociadas. Los mensajes de error son accesibles. El contraste visual es legible. |
-
-**Descripción**: Revisar la interfaz en las herramientas de desarrollo del navegador a anchos de 320, 768 y 1280 px. Verificar semántica HTML (etiquetas, `for`, roles). Ejecutar una comprobación básica de contraste.
-
----
-
-### T025 — Documentar el resultado del plan y las decisiones tomadas durante la implementación
-
-| Campo | Valor |
-|---|---|
-| **HU relacionada** | Transversal |
-| **Requisitos vinculados** | Constitución principio V |
-| **Dependencias** | T023 |
-| **Tipo** | doc |
-| **Criterio de finalización** | Las decisiones pendientes señaladas en `plan.md` (sección 11) están resueltas y documentadas: formato de ID, clave de localStorage, framework de pruebas y criterio de ordenación de la lista. |
-
-**Descripción**: Actualizar `plan.md` con las decisiones tomadas durante la implementación para mantener coherencia entre la documentación y el código producido.
-
----
-
-## Resumen de tareas
-
-| ID | Descripción breve | HU | Tipo |
-|---|---|---|---|
-| T001 | Estructura de carpetas y archivos | Transversal | impl |
-| T002 | Modelo de datos y clave de localStorage | HU1, HU4 | impl |
-| T003 | Función de creación de hábito | HU1 | impl |
-| T004 | Interfaz del formulario de registro | HU1 | impl |
-| T005 | Visualización de la lista de hábitos | HU1, HU3 | impl |
-| T006 | Prueba: registro de hábito válido | HU1 | prueba |
-| T007 | Validaciones de campos obligatorios y texto vacío | HU2 | impl |
-| T008 | Validación de nombres duplicados | HU2 | impl |
-| T009 | Conexión de validaciones con formulario y mensajes de error | HU2 | impl |
-| T010 | Prueba: campos obligatorios y solo espacios | HU2 | prueba |
-| T011 | Prueba: nombres duplicados | HU2 | prueba |
-| T012 | Marcado y desmarcado del día actual | HU3 | impl |
-| T013 | Restricción de edición de días pasados y futuros | HU3 | impl |
-| T014 | Cálculo de racha actual y mejor racha | HU3 | impl |
-| T015 | Mostrar rachas en la lista | HU3 | impl |
-| T016 | Prueba: marcado del día actual y restricción de días | HU3 | prueba |
-| T017 | Prueba: cálculo de rachas | HU3 | prueba |
-| T018 | Escritura en localStorage | HU4 | impl |
-| T019 | Lectura y recuperación defensiva de localStorage | HU4 | impl |
-| T020 | Integración de persistencia con el ciclo de vida | HU4 | integ |
-| T021 | Prueba: persistencia tras recarga | HU4 | prueba |
-| T022 | Prueba: datos ausentes o corruptos | HU4 | prueba |
-| T023 | Integración y flujo completo | HU1–HU4 | integ |
-| T024 | Diseño responsive y accesibilidad básica | Transversal | prueba |
-| T025 | Documentar decisiones de implementación | Transversal | doc |
-
-**Total de tareas: 25**
-
-### Distribución por historia de usuario
-
-| HU | Tareas | Cantidad |
-|---|---|---|
-| HU1 — Registro de hábitos | T003, T004, T005, T006 | 4 |
-| HU2 — Validaciones | T007, T008, T009, T010, T011 | 5 |
-| HU3 — Cumplimiento y rachas | T012, T013, T014, T015, T016, T017 | 6 |
-| HU4 — Persistencia y recuperación | T018, T019, T020, T021, T022 | 5 |
-| Preparación técnica (transversal) | T001, T002 | 2 |
-| Integración y pruebas generales (transversal) | T023, T024, T025 | 3 |
-| **Total** | | **25** |
-
-### Distribución por tipo de actividad
-
-| Tipo | Tareas | Cantidad |
-|---|---|---|
-| Implementación | T001, T002, T003, T004, T005, T007, T008, T009, T012, T013, T014, T015, T018, T019 | 14 |
-| Prueba | T006, T010, T011, T016, T017, T021, T022, T024 | 8 |
-| Integración | T020, T023 | 2 |
-| Documentación | T025 | 1 |
+- 37 tareas: Setup 6, Foundational 5, US1 9, US2 8, US3 5, Polish 4
+- Las tareas [P] tocan archivos distintos y no dependen de tareas pendientes
+- La etiqueta [USx] enlaza cada tarea con su historia del spec
+- Marcar cada tarea como `[X]` al completarla
