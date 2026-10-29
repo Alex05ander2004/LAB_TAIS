@@ -1,0 +1,17 @@
+# Dependencias
+node_modules/
+
+# Builds y reportes
+dist/
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Registros y entorno
+*.log
+.env*
+
+# Sistema
+.DS_Store
+Thumbs.db

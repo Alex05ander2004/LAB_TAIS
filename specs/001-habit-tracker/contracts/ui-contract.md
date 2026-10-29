@@ -63,6 +63,6 @@ Se muestra con `role="alert"` bajo el título cuando `loadState` devuelve `corru
 | Caso | Texto |
 |---|---|
 | `corrupt` | «Los datos guardados estaban dañados y no se pudieron leer. Empezaste con una lista vacía.» |
-| `partial` | «Se ignoraron {n} registros dañados de los datos guardados.» |
+| `partial` | «Se ignoraron {n} registros dañados de los datos guardados.» (con n = 1: «Se ignoró 1 registro dañado de los datos guardados.»). Cuenta hábitos descartados y fechas inválidas quitadas del historial. |
 | `unavailable` | «No se puede acceder al almacenamiento del navegador. Los cambios no se guardarán.» |
 | Fallo al guardar | «No se pudo guardar el último cambio en este navegador.» |
